@@ -54,14 +54,12 @@ char *strAtomo[] = {
 };
 
 int contaLinha = 1;
-char *entrada; // Ponteiro que será usado para percorrer a string lida do arquivo
+char *entrada;
 
-// Declaração das funções do analisador léxico
 TInfoAtomo obter_atomo();
 TInfoAtomo reconhece_num();
 TInfoAtomo reconhece_id();
 
-// Função para ler o arquivo inteiro e retornar uma string
 char *le_arquivo(const char *nome_arquivo) {
     FILE *arq = fopen(nome_arquivo, "r");
     if (!arq) {
@@ -79,7 +77,6 @@ char *le_arquivo(const char *nome_arquivo) {
     size_t lidos = fread(buffer, 1, tamanho, arq);
     if (lidos != tamanho) {
         fprintf(stderr, "Erro ao ler o arquivo.\n");
-        // Tratamento de erro, como fechar o arquivo ou tomar outra ação
     }
     buffer[tamanho] = '\0';
     fclose(arq);
@@ -87,9 +84,8 @@ char *le_arquivo(const char *nome_arquivo) {
 }
 
 int main(void) {
-    // Lê o arquivo "entrada.txt" e armazena seu conteúdo
     char *entrada_inicial = le_arquivo("/home/otavio/CLionProjects/Projeto1Compiladores/arquivo.txt");
-    entrada = entrada_inicial;  // 'entrada' será usada para o processamento
+    entrada = entrada_inicial;
 
     TInfoAtomo info_atm;
     do {
