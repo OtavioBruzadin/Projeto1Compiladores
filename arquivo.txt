@@ -1,3 +1,4 @@
-void main
-Main 12.4
-While _Var13
+ + *
+*
+1.2                   var1        _main
+var2

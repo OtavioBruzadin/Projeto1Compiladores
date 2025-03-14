@@ -1,33 +1,32 @@
 /*
-Implementacao do mini analisador lexico conforme os slides da aula Aula3(miniLexico).pdf
-IDENTIFICADOR -> LETRA_MINUSCULA(LETRA_MINUSCULA|DIGITO)*
-NUMERO -> DIGITO+.DIGITO+
+Primeira versao do analisador sintatico.
+Para gramática
+E ::= numero | identificador | +EE | *EE
 
-Para compilar, por exemplo, no VSCode use:
-gcc miniLexico.c -Wall -Og -g -o miniLexico
+Para compilar no vscode use:
+gcc ASDR3.c -Wall -Og -g -o ASDR3
 
-// Teste de memoria:
-https://diveintosystems.org/book/C3-C_debug/valgrind.html
-
-Rode o Valgrind com:
-valgrind --leak-check=yes ./miniLexico
-
-Caso não esteja instalado, use:
-sudo apt update
-sudo apt install valgrind
-sudo apt upgrade
+Testar com valgrind com
+valgrind --leak-check=yes ./ASDR3
 */
 
+// LEXICO
+#include <ctype.h>  //isupper
+#include <string.h> // strncpy
+#include <stdlib.h> // atof
+
+// SINTATICO
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
 
-// Definições dos tokens
-typedef enum {
+//######## DECLARACOES LEXICO
+// definicoes dos atomos
+typedef enum{
     ERRO,
     IDENTIFICADOR,
     NUMERO,
+    OP_SOMA,
+    OP_MULT,
     EOS, // fim de buffer
     CHAR,
     ELSE,
@@ -38,148 +37,158 @@ typedef enum {
     VOID,
     WHILE,
     WRITEINT
-} TAtomo;
 
-typedef struct {
+}TAtomo;
+
+typedef struct{
     TAtomo atomo;
     int linha;
     float atributo_numero;
     char atributo_ID[16];
-} TInfoAtomo;
+}TInfoAtomo;
 
-char *strAtomo[] = {
-    "ERRO", "IDENTIFICADOR", "NUMERO", "EOS",
-    "CHAR", "ELSE", "IF", "INT", "MAIN",
-    "READINT", "VOID", "WHILE", "WRITEINT"
-};
-
+// declaracao de variaveis globais
+char *strAtomo[]={"ERRO","IDENTIFICADOR","NUMERO","+","*","EOS"};
 int contaLinha = 1;
-char *entrada;
+char *entrada;          // usado para análise (será modificado)
+char *entradaOriginal;  // armazena o ponteiro original
 
+
+// declaracao da funcao
 TInfoAtomo obter_atomo();
 TInfoAtomo reconhece_num();
 TInfoAtomo reconhece_id();
+char *le_arquivo();
 
-char *le_arquivo(const char *nome_arquivo) {
-    FILE *arq = fopen(nome_arquivo, "r");
-    if (!arq) {
-        perror("Erro ao abrir o arquivo");
-        exit(EXIT_FAILURE);
-    }
-    fseek(arq, 0, SEEK_END);
-    long tamanho = ftell(arq);
-    rewind(arq);
-    char *buffer = malloc(tamanho + 1);
-    if (!buffer) {
-        perror("Erro ao alocar memoria");
-        exit(EXIT_FAILURE);
-    }
-    size_t lidos = fread(buffer, 1, tamanho, arq);
-    if (lidos != tamanho) {
-        fprintf(stderr, "Erro ao ler o arquivo.\n");
-    }
-    buffer[tamanho] = '\0';
-    fclose(arq);
-    return buffer;
-}
 
-int main(void) {
-    char *entrada_inicial = le_arquivo("/home/otavio/CLionProjects/Projeto1Compiladores/arquivo.txt");
-    entrada = entrada_inicial;
 
-    TInfoAtomo info_atm;
-    do {
-        info_atm = obter_atomo();
-        printf("%03d# %s | ", info_atm.linha, strAtomo[info_atm.atomo]);
-        if (info_atm.atomo == NUMERO)
-            printf("%.2f", info_atm.atributo_numero);
-        if (info_atm.atomo == IDENTIFICADOR)
-            printf("%s", info_atm.atributo_ID);
-        printf("\n");
-    } while (info_atm.atomo != ERRO && info_atm.atomo != EOS);
+//######## FIM DECLARACOES LEXICO
 
-    printf("fim de analise lexica\n");
 
-    // Libera a memória usando o ponteiro original retornado por le_arquivo()
-    free(entrada_inicial);
+//######## DECLARACOES SINTATICO
+// variavel global
+TAtomo lookahead;
+TInfoAtomo info_atomo;
+
+// E ::= a | b | +EE | *EE
+
+// SINTATICO - prototipacao de funcao
+void E();
+void consome( TAtomo atomo );
+
+//FIM DECLARCOES SINTATICO
+
+int main(){
+    entradaOriginal = le_arquivo("/home/otavio/CLionProjects/Projeto1Compiladores/arquivo.txt");
+    entrada = entradaOriginal;  // entrada aponta para o início do buffer
+
+    // Inicializa o lookahead
+    info_atomo = obter_atomo();
+    lookahead = info_atomo.atomo;
+
+    E(); // chama o símbolo inicial da gramática
+
+    printf("\nExpressao sintaticamente correta.\n");
+    free(entradaOriginal);  // Libera a memória alocada usando o ponteiro original
+
     return 0;
 }
 
-// Implementação da função obter_atomo
-TInfoAtomo obter_atomo() {
+//######## IMPLEMENTACAO LEXICO
+TInfoAtomo obter_atomo(){
     TInfoAtomo info_atomo;
     info_atomo.atomo = ERRO;
 
-    // Elimina delimitadores (espaço, quebras de linha, etc.)
-    while (*entrada == ' '  ||
-           *entrada == '\n' ||
-           *entrada == '\r' ||
-           *entrada == '\t') {
-        if (*entrada == '\n')
+    // Eliminar delimitadores
+    while(*entrada == ' ' || *entrada == '\n' || *entrada == '\r' || *entrada == '\t'){
+        if(*entrada == '\n')
             contaLinha++;
         entrada++;
     }
-    if (*entrada == '\0') {
+
+    // Se chegou ao final da entrada, retorne EOS imediatamente
+    if(*entrada == '\0'){
         info_atomo.atomo = EOS;
         info_atomo.linha = contaLinha;
         return info_atomo;
     }
-    if (isdigit(*entrada)) {
+
+    if(*entrada == '+'){
+        entrada++;
+        info_atomo.atomo = OP_SOMA;
+    }
+    else if(*entrada == '*'){
+        entrada++;
+        info_atomo.atomo = OP_MULT;
+    }
+    else if(isdigit(*entrada)){
         info_atomo = reconhece_num();
     }
-    else if (isalpha(*entrada) || *entrada == '_') {
+    else if(isalpha(*entrada) || *entrada == '_'){
         info_atomo = reconhece_id();
     }
+
     info_atomo.linha = contaLinha;
     return info_atomo;
 }
 
-// Implementação da função reconhece_num (para números no formato DIGITO+.DIGITO+)
-TInfoAtomo reconhece_num() {
+// NUMERO -> DIGITO+.DIGITO+
+TInfoAtomo reconhece_num(){
     TInfoAtomo info_num;
     char str_num[10];
     char *ini_num;
+
     info_num.atomo = ERRO;
 
     ini_num = entrada;
-    // q0:
-    if (isdigit(*entrada)) {
-        entrada++; // consome dígito
+//q0:
+    if(isdigit(*entrada)){
+        entrada++; // consome digito
         goto q1;
     }
-    return info_num; // erro léxico
+
+    //se terminar a palavra retorna 0, pois
+    //nao eh estado final
+    return info_num; // erro lexico
+
 q1:
-    if (isdigit(*entrada)) {
-        entrada++; // consome dígito
+    if(isdigit(*entrada)){
+        entrada++; // consome digito
         goto q1;
     }
-    if (*entrada == '.') {
-        entrada++; // consome o ponto
+    if(*entrada == '.'){
+        entrada++; // consome .
         goto q2;
     }
-    return info_num; // erro léxico
+    //[outro]
+    return info_num; // erro lexico
 q2:
-    if (isdigit(*entrada)) {
-        entrada++; // consome dígito
+    if(isdigit(*entrada)){
+        entrada++; // consome digito
         goto q3;
     }
-    return info_num; // erro léxico
+    //[outro]
+    return info_num; // erro lexico
 q3:
-    if (isdigit(*entrada)) {
-        entrada++; // consome dígito
+    if(isdigit(*entrada)){
+        entrada++; // consome digito
         goto q3;
     }
-    if (isalpha(*entrada)) {
-        return info_num; // erro léxico se vier letra após o número
+    // se vier letra
+    if(isalpha(*entrada)){
+        return info_num; // erro lexico
     }
     info_num.atomo = NUMERO;
-    strncpy(str_num, ini_num, entrada - ini_num);
-    str_num[entrada - ini_num] = '\0';
+    //man strncpy
+    strncpy(str_num,ini_num,entrada - ini_num);
+    //finalizar a string
+    str_num[entrada - ini_num]='\0';
     info_num.atributo_numero = atof(str_num);
     return info_num;
 }
 
-// Implementação da função reconhece_id (para identificadores)
+// IDENTIFICADOR -> LETRA_MINUSCULA(LETRA_MINUSCULA|DIGITO)*
+
 TInfoAtomo reconhece_id() {
     TInfoAtomo info_id;
     char str_id[16];
@@ -194,12 +203,12 @@ TInfoAtomo reconhece_id() {
         goto q1;
     }
     return info_id;
-q1:
-    // Consome enquanto for letra, dígito ou underscore
-    if (isalnum(*entrada) || *entrada == '_') {
-        entrada++;
-        goto q1;
-    }
+    q1:
+        // Consome enquanto for letra, dígito ou underscore
+        if (isalnum(*entrada) || *entrada == '_') {
+            entrada++;
+            goto q1;
+        }
     len = entrada - ini_id;
     if (len >= sizeof(str_id))
         len = sizeof(str_id) - 1;
@@ -230,4 +239,89 @@ q1:
     }
 
     return info_id;
+}
+//######## FIM IMPLEMENTACAO LEXICO
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//######## IMPLEMENTACAO SINTATICO
+// E ::= a | b | +EE | *EE
+void E(){
+    switch( lookahead ){
+        case OP_SOMA:
+            //consome +
+            consome(OP_SOMA);
+
+            E();E();
+            break;
+        case OP_MULT:
+            //consome *
+            consome(OP_MULT);
+            E();E();
+            break;
+        case IDENTIFICADOR:
+        case NUMERO:
+            //consome a | b
+            consome(lookahead);
+            break;
+        default:
+            consome(IDENTIFICADOR);
+    }
+
+
+}
+
+void consome( TAtomo atomo ){
+    if( lookahead == atomo ){
+        printf("%03d# %s | ", info_atomo.linha, strAtomo[info_atomo.atomo]);
+        if (info_atomo.atomo == NUMERO)
+            printf("%.2f", info_atomo.atributo_numero);
+        if (info_atomo.atomo == IDENTIFICADOR)
+            printf("%s", info_atomo.atributo_ID);
+        printf("\n");
+
+        info_atomo = obter_atomo();
+        lookahead = info_atomo.atomo;
+    }
+    else{
+        printf("%03d# Erro sintatico: esperado [%s] encontrado [%s]\n",
+               contaLinha, strAtomo[atomo], strAtomo[lookahead]);
+        free(entradaOriginal);  // Libera a memória usando o ponteiro original
+        exit(1);
+    }
+}
+
+//######## FIM IMPLEMENTACAO SINTATICO
+
+// FUNCOES AUXILIARES
+
+char *le_arquivo(const char *nome_arquivo) {
+    FILE *arq = fopen(nome_arquivo, "r");
+    if (!arq) {
+        perror("Erro ao abrir o arquivo");
+        exit(EXIT_FAILURE);
+    }
+    fseek(arq, 0, SEEK_END);
+    long tamanho = ftell(arq);
+    rewind(arq);
+    char *buffer = malloc(tamanho + 1);
+    if (!buffer) {
+        perror("Erro ao alocar memoria");
+        exit(EXIT_FAILURE);
+    }
+    size_t lidos = fread(buffer, 1, tamanho, arq);
+    if (lidos != tamanho) {
+        fprintf(stderr, "Erro ao ler o arquivo.\n");
+    }
+    buffer[tamanho] = '\0';
+    fclose(arq);
+    return buffer;
+}
+
+int encontrarIndice(const char *palavra) {
+    int tamanho = sizeof(strAtomo) / sizeof(strAtomo[0]);
+    for (int i = 0; i < tamanho; i++) {
+        if (strcmp(strAtomo[i], palavra) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
