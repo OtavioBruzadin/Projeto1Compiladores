@@ -60,10 +60,7 @@ TInfoAtomo reconhece_num();
 TInfoAtomo reconhece_id();
 char *le_arquivo();
 
-
-
 //######## FIM DECLARACOES LEXICO
-
 
 //######## DECLARACOES SINTATICO
 // variavel global
@@ -89,7 +86,7 @@ int main(){
     E(); // chama o símbolo inicial da gramática
 
     printf("\nExpressao sintaticamente correta.\n");
-    free(entradaOriginal);  // Libera a memória alocada usando o ponteiro original
+    free(entradaOriginal);
 
     return 0;
 }
@@ -284,7 +281,7 @@ void consome( TAtomo atomo ){
     else{
         printf("%03d# Erro sintatico: esperado [%s] encontrado [%s]\n",
                contaLinha, strAtomo[atomo], strAtomo[lookahead]);
-        free(entradaOriginal);  // Libera a memória usando o ponteiro original
+        free(entradaOriginal);
         exit(1);
     }
 }
