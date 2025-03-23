@@ -123,7 +123,7 @@ TInfoAtomo obter_atomo(){
         return info;
     }
 
-    // Se inicia um comentário, processa-o e retorna o token de comentário.
+    // Se inicia um comentario, processa e retorna o token de comentario.
     if(*entrada == '/' && (*(entrada+1) == '/' || *(entrada+1) == '*')){
         info = processa_comentario();
         info.linha = contaLinha;
@@ -146,7 +146,7 @@ TInfoAtomo obter_atomo(){
         info = reconhece_id();
     }
     else{
-        // Se o caractere não é reconhecido, marca erro e consome-o.
+        // Se o caractere nao e reconhecido, marca erro e consome.
         info.atomo = ERRO;
         entrada++;
     }
@@ -155,7 +155,7 @@ TInfoAtomo obter_atomo(){
     return info;
 }
 
-// Função para processar comentários (tanto de linha quanto de bloco)
+// Funcao para processar comentários (tanto de linha quanto de bloco)
 TInfoAtomo processa_comentario(){
     TInfoAtomo info_atomo;
     int i = 0;
@@ -174,7 +174,7 @@ TInfoAtomo processa_comentario(){
         return info_atomo;
     }
     // Comentário de várias linhas: /* ... */
-    else if(*entrada == '/' && *(entrada+1) == '*'){
+     if(*entrada == '/' && *(entrada+1) == '*'){
         entrada += 2; // consome "/*"
         while(!(*entrada == '*' && *(entrada+1) == '/')){
             if(*entrada == '\n'){
@@ -197,7 +197,6 @@ TInfoAtomo processa_comentario(){
     return info_atomo;
 }
 
-// Reconhecimento de números: NUMERO -> DIGITO+.DIGITO+
 TInfoAtomo reconhece_num(){
     TInfoAtomo info_num;
     char str_num[10];
@@ -345,8 +344,7 @@ void consome(TAtomo atomo){
         nextToken();
     }
     else{
-        printf("%03d# Erro sintatico: esperado [%s] encontrado [%s]\n",
-               contaLinha, strAtomo[atomo], strAtomo[lookahead]);
+        printf("%03d# Erro sintatico: esperado [%s] encontrado [%s]\n",contaLinha, strAtomo[atomo], strAtomo[lookahead]);
         free(entradaOriginal);
         exit(1);
     }
